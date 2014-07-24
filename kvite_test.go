@@ -80,6 +80,24 @@ func TestCreateBucket(t *testing.T) {
 	})
 }
 
+func TestCreateBucketIfNotExists(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		tx, err := db.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		_, err = tx.CreateBucketIfNotExists("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tx.Commit()
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func TestPut(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
