@@ -23,11 +23,12 @@ type (
 
 	//Bucket represents a collection of key/value pairs inside the database.
 	Bucket struct {
-		name        string
-		tx          *Tx
-		putQuery    string
-		deleteQuery string
-		getQuery    string
+		name         string
+		tx           *Tx
+		putQuery     string
+		deleteQuery  string
+		getQuery     string
+		foreachQuery string
 	}
 )
 
@@ -116,11 +117,12 @@ func (tx *Tx) Rollback() error {
 // horrible hack to use a table per bucket and generate sql
 func (tx *Tx) newBucket(name string) *Bucket {
 	return &Bucket{
-		tx:          tx,
-		name:        name,
-		getQuery:    fmt.Sprintf("SELECT value FROM '%s' where key = ?", name),
-		deleteQuery: fmt.Sprintf("DELETE FROM '%s' where key = ?", name),
-		putQuery:    fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value) values (?,?)", name),
+		tx:           tx,
+		name:         name,
+		getQuery:     fmt.Sprintf("SELECT value FROM '%s' WHERE key = ?", name),
+		deleteQuery:  fmt.Sprintf("DELETE FROM '%s' WHERE key = ?", name),
+		putQuery:     fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value) values (?,?)", name),
+		foreachQuery: fmt.Sprintf("SELECT key, value FROM '%s'", name),
 	}
 }
 
@@ -193,4 +195,23 @@ func (b *Bucket) Get(key string) ([]byte, error) {
 	}
 
 	return value, nil
+}
+
+//ForEach executes a function for each key/value pair in a bucket. If the provided function returns an error then the iteration is stopped and the error is returned to the caller.
+func (b *Bucket) ForEach(fn func(k string, v []byte) error) error {
+	rows, err := b.tx.tx.Query(b.foreachQuery)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var key string
+		var value []byte
+		if err := rows.Scan(&key, &value); err != nil {
+			return err
+		}
+		if err := fn(key, value); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
