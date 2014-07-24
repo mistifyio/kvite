@@ -225,6 +225,34 @@ func TestTransaction(t *testing.T) {
 	})
 }
 
+func BenchmarkPutGet(bm *testing.B) {
+	file := tempfile()
+	db, err := Open(file)
+
+	if err != nil {
+		bm.Fatal(err)
+	}
+	defer os.Remove(file)
+	defer db.Close()
+
+	err = db.Transaction(func(tx *Tx) error {
+		b, err := tx.CreateBucket("test")
+		return err
+
+		for n := 0; n < bm.N; n++ {
+			err = b.Put("foo", []byte("bar"))
+			if err != nil {
+				return err
+			}
+			_, err := b.Get("foo")
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // tempfile returns a temporary file path.
 func tempfile() string {
 	f, _ := ioutil.TempFile("", "kvite-")
