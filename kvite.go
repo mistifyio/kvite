@@ -157,9 +157,9 @@ func (tx *Tx) CreateBucket(name string) (*Bucket, error) {
 func (tx *Tx) CreateBucketIfNotExists(name string) (*Bucket, error) {
 	b, err := tx.Bucket(name)
 	if err != nil {
-		if b != nil {
-			return nil, err
-		}
+		return nil, err
+	}
+	if b == nil {
 		return tx.CreateBucket(name)
 	}
 	return b, nil
