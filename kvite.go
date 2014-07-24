@@ -138,7 +138,7 @@ func (tx *Tx) Bucket(name string) (*Bucket, error) {
 }
 
 // CreateBucket creates a new bucket and returns the new bucket.
-// Returns an error if the bucker already exists.
+// Returns an error if the bucket already exists.
 func (tx *Tx) CreateBucket(name string) (*Bucket, error) {
 	_, err := tx.tx.Exec(fmt.Sprintf("create TABLE '%s' (key text not null primary key, value blob not null)", name))
 
