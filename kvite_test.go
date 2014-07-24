@@ -227,6 +227,46 @@ func TestTransaction(t *testing.T) {
 	})
 }
 
+func TestForEach(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		err := db.Transaction(func(tx *Tx) error {
+			b, err := tx.CreateBucket("test")
+			if err != nil {
+				return err
+			}
+
+			err = b.Put("foo", []byte("bar"))
+			if err != nil {
+				return err
+			}
+
+			err = b.Put("baz", []byte("stuff"))
+			if err != nil {
+				return err
+			}
+
+			items := make([]string, 0)
+			err = b.ForEach(func(k string, v []byte) error {
+				items = append(items, k)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
+			if len(items) != 2 {
+				return fmt.Errorf("length does not match")
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func BenchmarkPutGet(bm *testing.B) {
 	file := tempfile()
 	db, err := Open(file)
