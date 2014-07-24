@@ -120,7 +120,7 @@ func (tx *Tx) newBucket(name string) *Bucket {
 		name:        name,
 		getQuery:    fmt.Sprintf("SELECT value FROM '%s' where key = ?", name),
 		deleteQuery: fmt.Sprintf("DELETE FROM '%s' where key = ?", name),
-		putQuery:    fmt.Sprintf("INSERT INTO '%s' (key, value) values (?,?)", name),
+		putQuery:    fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value) values (?,?)", name),
 	}
 }
 
