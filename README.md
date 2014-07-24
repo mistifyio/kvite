@@ -1,4 +1,4 @@
-KVite [![GoDoc](https://godoc.org/github.com/mistifyio/kvite?status.png)](https://godoc.org/github.com/mistifyio/kvite) 
+KVite [![GoDoc](https://godoc.org/github.com/mistifyio/kvite?status.png)](https://godoc.org/github.com/mistifyio/kvite) [![Build Status](https://drone.io/github.com/mistifyio/kvite/status.png)](https://drone.io/github.com/mistifyio/kvite/latest)
 =====
 
 ## Overview ##
