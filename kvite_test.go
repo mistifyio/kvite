@@ -98,6 +98,34 @@ func TestCreateBucketIfNotExists(t *testing.T) {
 	})
 }
 
+func TestBucket(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		tx, err := db.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		b, err := tx.Bucket("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b != nil {
+			t.Fatal("got a bucket when it should have been nil")
+		}
+		_, err = tx.CreateBucket("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err = tx.Bucket("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b == nil {
+			t.Fatal("got nil when it should have been a bucket")
+		}
+	})
+}
+
 func TestPut(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
@@ -145,6 +173,12 @@ func TestGet(t *testing.T) {
 
 		if string(val) != "bar" {
 			t.Fatalf("values fo not match")
+		}
+
+		// bad key
+		val, err = b.Get("")
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		err = tx.Commit()
@@ -267,6 +301,35 @@ func TestForEach(t *testing.T) {
 	})
 }
 
+func TestForEachWithError(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		err := db.Transaction(func(tx *Tx) error {
+			b, err := tx.CreateBucket("test")
+			if err != nil {
+				return err
+			}
+
+			err = b.Put("foo", []byte("bar"))
+			if err != nil {
+				return err
+			}
+			err = b.ForEach(func(k string, v []byte) error {
+				return fmt.Errorf("something bad happened")
+			})
+			if err == nil {
+				return fmt.Errorf("should hve got an error")
+			}
+			if err.Error() != "something bad happened" {
+				return fmt.Errorf("error did not match")
+			}
+			return nil
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+}
 func BenchmarkPutGet(bm *testing.B) {
 	file := tempfile()
 	db, err := Open(file)
