@@ -201,7 +201,9 @@ func TestTransaction(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		err := db.Transaction(func(tx *Tx) error {
 			b, err := tx.CreateBucket("test")
-			return err
+			if err != nil {
+				return err
+			}
 
 			err = b.Put("foo", []byte("bar"))
 			if err != nil {
@@ -214,7 +216,7 @@ func TestTransaction(t *testing.T) {
 			}
 
 			if string(val) != "bar" {
-				return fmt.Errorf("values fo not match")
+				return fmt.Errorf("values do not match")
 			}
 			return nil
 		})
@@ -237,7 +239,9 @@ func BenchmarkPutGet(bm *testing.B) {
 
 	err = db.Transaction(func(tx *Tx) error {
 		b, err := tx.CreateBucket("test")
-		return err
+		if err != nil {
+			return err
+		}
 
 		for n := 0; n < bm.N; n++ {
 			err = b.Put("foo", []byte("bar"))
@@ -251,6 +255,9 @@ func BenchmarkPutGet(bm *testing.B) {
 		}
 		return nil
 	})
+	if err != nil {
+		bm.Fatal(err)
+	}
 }
 
 // tempfile returns a temporary file path.
