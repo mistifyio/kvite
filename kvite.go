@@ -1,11 +1,11 @@
-// kvite is a simple embedded K/V store backed by SQLite
+// Package kvite is a simple embedded K/V store backed by SQLite
 package kvite
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" //import sqlite3 for driver
 )
 
 type (
@@ -124,16 +124,15 @@ func (tx *Tx) newBucket(name string) *Bucket {
 	}
 }
 
-//Bucker gets a bucket by name.
+// Bucket gets a bucket by name.
 func (tx *Tx) Bucket(name string) (*Bucket, error) {
 	var foo string
 
 	if err := tx.tx.QueryRow("SELECT name FROM sqlite_master WHERE type=? AND name=?", "table", name).Scan(&foo); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 	return tx.newBucket(name), nil
 }
@@ -189,9 +188,8 @@ func (b *Bucket) Get(key string) ([]byte, error) {
 	if err := b.tx.tx.QueryRow(b.getQuery, key).Scan(&value); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	return value, nil
