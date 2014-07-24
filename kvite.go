@@ -215,3 +215,56 @@ func (b *Bucket) ForEach(fn func(k string, v []byte) error) error {
 	}
 	return rows.Err()
 }
+
+// Get is a convenience wrapper to get a single value from a bucket.
+// Will return an error if the bucket does not exist
+func (db *DB) Get(bucket, key string) ([]byte, error) {
+	var value []byte
+	err := db.Transaction(func(tx *Tx) error {
+		b, err := tx.Bucket(bucket)
+		if err != nil {
+			return err
+		}
+		if b == nil {
+			return fmt.Errorf("bucket '%s' does not exist", bucket)
+		}
+		value, err = b.Get(key)
+		return err
+
+	})
+	if err != nil {
+		return nil, err
+	}
+	return value, err
+}
+
+// Put is a convenience wrapper to put a single value into a bucket.
+// Will return an error if the bucket does not exist
+func (db *DB) Put(bucket, key string, value []byte) error {
+	return db.Transaction(func(tx *Tx) error {
+		b, err := tx.Bucket(bucket)
+		if err != nil {
+			return err
+		}
+		if b == nil {
+			return fmt.Errorf("bucket '%s' does not exist", bucket)
+		}
+		return b.Put(key, value)
+
+	})
+}
+
+// Delete is a convenience wrapper to delete a single value from a bucket.
+// Will return an error if the bucket does not exist
+func (db *DB) Delete(bucket, key string) error {
+	return db.Transaction(func(tx *Tx) error {
+		b, err := tx.Bucket(bucket)
+		if err != nil {
+			return err
+		}
+		if b == nil {
+			return fmt.Errorf("bucket '%s' does not exist", bucket)
+		}
+		return b.Delete(key)
+	})
+}

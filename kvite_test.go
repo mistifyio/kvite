@@ -267,7 +267,62 @@ func TestForEach(t *testing.T) {
 	})
 }
 
-func BenchmarkPutGet(bm *testing.B) {
+func TestDBPutGET(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		err := db.Transaction(func(tx *Tx) error {
+			_, err := tx.CreateBucket("test")
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := db.Put("test", "foo", []byte("bar")); err != nil {
+			t.Fatal(err)
+		}
+
+		val, err := db.Get("test", "foo")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if string(val) != "bar" {
+			t.Fatalf("values do not match")
+		}
+
+	})
+}
+
+func TestDBDelete(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		err := db.Transaction(func(tx *Tx) error {
+			_, err := tx.CreateBucket("test")
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := db.Put("test", "foo", []byte("bar")); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := db.Delete("test", "foo"); err != nil {
+			t.Fatal(err)
+		}
+		val, err := db.Get("test", "foo")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if val != nil {
+			t.Fatalf("got a value when it should have been nil")
+		}
+
+	})
+}
+
+func BenchmarkDBPutGet(bm *testing.B) {
 	file := tempfile()
 	db, err := Open(file)
 
