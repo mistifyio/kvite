@@ -10,7 +10,9 @@ It is also horribly named. K/V + SQLite => KVite.
 
 ## Design ##
 
-The API was influenced heavily by [bolt](https://github.com/boltdb/bolt/).
+The API was influenced heavily by
+[bolt](https://github.com/boltdb/bolt/). kvite is safe to use with
+multiple processes.
 
 Key/Value pairs are stored in buckets.  Each bucket is a table in an SQLite database.  Keys are stored as `TEXT` in the database and referenced as `string` in Go.  Values are stores as `BLOB` in the database and referenced as `[]byte` in Go.
 
@@ -38,6 +40,12 @@ err := db.Transaction(func(tx *Tx) error {
             return nil
         })
 
-
 ```
+
+For full documentation see the [godoc](https://godoc.org/github.com/mistifyio/kvite)
+
+# Status #
+
+kvite is currently being used in a larger production quality project.
+The API is not yet stabilized, however.
 
