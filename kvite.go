@@ -11,7 +11,13 @@ import (
 type (
 	// DB is a wrapper around the underlying SQLite database.
 	DB struct {
-		db *sql.DB
+		db           *sql.DB
+		table        string
+		putQuery     string
+		deleteQuery  string
+		getQuery     string
+		foreachQuery string
+		bucketsQuery string
 	}
 
 	// Tx wraps most interactions with the datastore.
@@ -23,24 +29,47 @@ type (
 
 	//Bucket represents a collection of key/value pairs inside the database.
 	Bucket struct {
-		name         string
-		tx           *Tx
-		putQuery     string
-		deleteQuery  string
-		getQuery     string
-		foreachQuery string
+		name string
+		tx   *Tx
 	}
 )
 
 // Open opens a KVite datastore. The returned DB is safe for concurrent use by multiple goroutines.
 // It is rarely necessary to close a DB.
-func Open(filename string) (*DB, error) {
+func Open(filename, table string) (*DB, error) {
 	db, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{db: db}, nil
+	if table == "" {
+		table = "kvite"
+	}
+
+	tx, err := db.Begin()
+	defer tx.Rollback()
+	query := fmt.Sprintf("create TABLE '%s' (key text not null, bucket text not null, value blob not null)", table)
+	if _, err := tx.Exec(query); err != nil {
+		return nil, err
+	}
+	query = fmt.Sprintf("create INDEX IF NOT EXISTS '%s_kvite_index' ON '%s' (key, bucket)", table, table)
+	if _, err := tx.Exec(query); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &DB{
+		db:           db,
+		table:        table,
+		getQuery:     fmt.Sprintf("SELECT value FROM '%s' WHERE key = ? and bucket = ?", table),
+		deleteQuery:  fmt.Sprintf("DELETE FROM '%s' WHERE key = ? AND bucket = ?", table),
+		putQuery:     fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value, bucket) VALUES (?, ?, ?)", table),
+		foreachQuery: fmt.Sprintf("SELECT key, value FROM '%s' WHERE bucket = ?", table),
+		bucketsQuery: fmt.Sprintf("SELECT DISTINCT bucket from '%s'", table),
+	}, nil
 }
 
 // Close closes the database, releasing any open resources.
@@ -61,6 +90,28 @@ func (db *DB) Begin() (*Tx, error) {
 	}
 	return t, nil
 
+}
+
+// Buckets returns all the buckets
+func (db *DB) Buckets() ([]string, error) {
+	rows, err := db.db.Query(db.bucketsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	buckets := make([]string, 0, 32)
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		buckets = append(buckets, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return buckets, nil
 }
 
 // Transaction executes a function within the context of a  managed transaction.
@@ -114,60 +165,32 @@ func (tx *Tx) Rollback() error {
 	return tx.tx.Rollback()
 }
 
-// horrible hack to use a table per bucket and generate sql
 func (tx *Tx) newBucket(name string) *Bucket {
 	return &Bucket{
-		tx:           tx,
-		name:         name,
-		getQuery:     fmt.Sprintf("SELECT value FROM '%s' WHERE key = ?", name),
-		deleteQuery:  fmt.Sprintf("DELETE FROM '%s' WHERE key = ?", name),
-		putQuery:     fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value) values (?,?)", name),
-		foreachQuery: fmt.Sprintf("SELECT key, value FROM '%s'", name),
+		tx:   tx,
+		name: name,
 	}
 }
 
-// Bucket gets a bucket by name.
+// Bucket gets a bucket by name.  Buckets can be created on the fly and do not "exist" until they have keys.
 func (tx *Tx) Bucket(name string) (*Bucket, error) {
-	var foo string
-
-	if err := tx.tx.QueryRow("SELECT name FROM sqlite_master WHERE type=? AND name=?", "table", name).Scan(&foo); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
 	return tx.newBucket(name), nil
 }
 
-// CreateBucket creates a new bucket and returns the new bucket.
-// Returns an error if the bucket already exists.
+// CreateBucket is provided for compatibility. It just calls Bucket.
 func (tx *Tx) CreateBucket(name string) (*Bucket, error) {
-	_, err := tx.tx.Exec(fmt.Sprintf("create TABLE '%s' (key text not null primary key, value blob not null)", name))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tx.newBucket(name), nil
+	return tx.Bucket(name)
 
 }
 
-// CreateBucketIfNotExists creates a new bucket if it doesn't already exist and returns it.
-// If the bucket already exists, it will return it.
+// CreateBucketIfNotExists is provided for compatibility. It just calls Bucket.
 func (tx *Tx) CreateBucketIfNotExists(name string) (*Bucket, error) {
-	b, err := tx.Bucket(name)
-	if err != nil {
-		return nil, err
-	}
-	if b == nil {
-		return tx.CreateBucket(name)
-	}
-	return b, nil
+	return tx.Bucket(name)
 }
 
 // Put sets the value for a key in the bucket. If the key exists, then its previous value will be overwritten.
 func (b *Bucket) Put(key string, value []byte) error {
-	_, err := b.tx.tx.Exec(b.putQuery, key, value)
+	_, err := b.tx.tx.Exec(b.tx.db.putQuery, key, value, b.name)
 	if err != nil {
 		return err
 	}
@@ -176,7 +199,7 @@ func (b *Bucket) Put(key string, value []byte) error {
 
 // Delete removes a key from the bucket. If the key does not exist then nothing is done and a nil error is returned.
 func (b *Bucket) Delete(key string) error {
-	_, err := b.tx.tx.Exec(b.deleteQuery, key)
+	_, err := b.tx.tx.Exec(b.tx.db.deleteQuery, key, b.name)
 	if err != nil {
 		return err
 	}
@@ -187,7 +210,7 @@ func (b *Bucket) Delete(key string) error {
 func (b *Bucket) Get(key string) ([]byte, error) {
 	var value []byte
 
-	if err := b.tx.tx.QueryRow(b.getQuery, key).Scan(&value); err != nil {
+	if err := b.tx.tx.QueryRow(b.tx.db.getQuery, key, b.name).Scan(&value); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -199,7 +222,7 @@ func (b *Bucket) Get(key string) ([]byte, error) {
 
 //ForEach executes a function for each key/value pair in a bucket. If the provided function returns an error then the iteration is stopped and the error is returned to the caller.
 func (b *Bucket) ForEach(fn func(k string, v []byte) error) error {
-	rows, err := b.tx.tx.Query(b.foreachQuery)
+	rows, err := b.tx.tx.Query(b.tx.db.foreachQuery, b.name)
 	if err != nil {
 		return err
 	}
