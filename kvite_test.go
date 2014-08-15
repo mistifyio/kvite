@@ -13,15 +13,10 @@ import (
 func withDB(t *testing.T, fn func(db *DB, t *testing.T)) {
 	file := tempfile()
 	db, err := Open(file, "testing")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	ok(t, err)
 	defer os.Remove(file)
 	defer db.Close()
-
 	fn(db, t)
-
 }
 
 func TestOpen(t *testing.T) {
@@ -42,161 +37,106 @@ func TestBegin(t *testing.T) {
 func TestRollback(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		err = tx.Rollback()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestCommit(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestCreateBucket(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		defer tx.Rollback()
 		_, err = tx.CreateBucket("test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestCreateBucketIfNotExists(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		defer tx.Rollback()
 		_, err = tx.CreateBucketIfNotExists("test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestPut(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		defer tx.Rollback()
 		b, err := tx.CreateBucket("test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		err = b.Put("foo", []byte("bar"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestGet(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		defer tx.Rollback()
 		b, err := tx.CreateBucket("test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		err = b.Put("foo", []byte("bar"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		val, err := b.Get("foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
-		if string(val) != "bar" {
-			t.Fatalf("values fo not match")
-		}
+		equals(t, string(val), "bar")
 
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
 func TestDelete(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 		defer tx.Rollback()
 		b, err := tx.CreateBucket("test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		err = b.Put("foo", []byte("bar"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		val, err := b.Get("foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
-		if string(val) != "bar" {
-			t.Fatalf("values fo not match")
-		}
+		equals(t, string(val), "bar")
 
 		err = b.Delete("foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 
 		val, err = b.Get("foo")
-		if val != nil {
-			t.Fatalf("got a value when should have been nil")
-		}
+		equals(t, []byte(nil), val)
+		ok(t, err)
 
 		err = tx.Commit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
@@ -204,23 +144,16 @@ func TestTransaction(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		err := db.Transaction(func(tx *Tx) error {
 			b, err := tx.CreateBucket("test")
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			err = b.Put("foo", []byte("bar"))
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			val, err := b.Get("foo")
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
-			if string(val) != "bar" {
-				return fmt.Errorf("values do not match")
-			}
+			equals(t, string(val), "bar")
+
 			return nil
 		})
 
@@ -234,28 +167,20 @@ func TestForEach(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		err := db.Transaction(func(tx *Tx) error {
 			b, err := tx.CreateBucket("test")
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			err = b.Put("foo", []byte("bar"))
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			err = b.Put("baz", []byte("stuff"))
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			items := make([]string, 0)
 			err = b.ForEach(func(k string, v []byte) error {
 				items = append(items, k)
 				return nil
 			})
-			if err != nil {
-				return err
-			}
+			ok(t, err)
 
 			if len(items) != 2 {
 				return fmt.Errorf("length does not match")
@@ -264,9 +189,7 @@ func TestForEach(t *testing.T) {
 			return nil
 		})
 
-		if err != nil {
-			t.Fatal(err)
-		}
+		ok(t, err)
 	})
 }
 
@@ -276,13 +199,9 @@ func TestBuckets(t *testing.T) {
 		err := db.Transaction(func(tx *Tx) error {
 			for _, name := range buckets {
 				b, err := tx.CreateBucket(name)
-				if err != nil {
-					return err
-				}
+				ok(t, err)
 				err = b.Put("foo", []byte("bar"))
-				if err != nil {
-					return err
-				}
+				ok(t, err)
 			}
 			return nil
 		})
