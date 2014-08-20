@@ -48,7 +48,7 @@ func Open(filename, table string) (*DB, error) {
 
 	tx, err := db.Begin()
 	defer tx.Rollback()
-	query := fmt.Sprintf("create TABLE '%s' (key text not null, bucket text not null, value blob not null)", table)
+	query := fmt.Sprintf("create TABLE IF NOT EXISTS '%s' (key text not null, bucket text not null, value blob not null)", table)
 	if _, err := tx.Exec(query); err != nil {
 		return nil, err
 	}
