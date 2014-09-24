@@ -14,7 +14,8 @@ The API was influenced heavily by
 [bolt](https://github.com/boltdb/bolt/). kvite is safe to use with
 multiple processes.
 
-Key/Value pairs are stored in buckets.  Each bucket is a table in an SQLite database.  Keys are stored as `TEXT` in the database and referenced as `string` in Go.  Values are stores as `BLOB` in the database and referenced as `[]byte` in Go.
+Data is stored in a single table per kvite "instance" using a
+bucket/key/value.  Keys are stored as `TEXT` in the database and referenced as `string` in Go.  Values are stores as `BLOB` in the database and referenced as `[]byte` in Go.
 
 Interactions with the datastore are done through transactions.
 
