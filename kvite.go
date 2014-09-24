@@ -191,19 +191,13 @@ func (tx *Tx) CreateBucketIfNotExists(name string) (*Bucket, error) {
 // Put sets the value for a key in the bucket. If the key exists, then its previous value will be overwritten.
 func (b *Bucket) Put(key string, value []byte) error {
 	_, err := b.tx.tx.Exec(b.tx.db.putQuery, key, value, b.name)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Delete removes a key from the bucket. If the key does not exist then nothing is done and a nil error is returned.
 func (b *Bucket) Delete(key string) error {
 	_, err := b.tx.tx.Exec(b.tx.db.deleteQuery, key, b.name)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Get retrieves the value for a key in the bucket. Returns a nil value if the key does not exist
