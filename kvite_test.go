@@ -212,6 +212,27 @@ func TestBuckets(t *testing.T) {
 	})
 }
 
+func TestUnique(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		err := db.Transaction(func(tx *Tx) error {
+			b, err := tx.CreateBucket("test")
+			ok(t, err)
+
+			err = b.Put("foo", []byte("bar"))
+			ok(t, err)
+			err = b.Put("foo", []byte("baz"))
+
+			err = b.ForEach(func(k string, v []byte) error {
+				equals(t, "baz", string(v))
+				return nil
+			})
+			ok(t, err)
+			return nil
+		})
+		ok(t, err)
+	})
+}
+
 func BenchmarkPutGet(bm *testing.B) {
 	file := tempfile()
 	db, err := Open(file, "testing")
