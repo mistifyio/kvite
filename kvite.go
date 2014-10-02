@@ -52,7 +52,7 @@ func Open(filename, table string) (*DB, error) {
 	if _, err := tx.Exec(query); err != nil {
 		return nil, err
 	}
-	query = fmt.Sprintf("create INDEX IF NOT EXISTS '%s_kvite_index' ON '%s' (key, bucket)", table, table)
+	query = fmt.Sprintf("create UNIQUE INDEX IF NOT EXISTS '%s_kvite_key_index' ON '%s' (key, bucket)", table, table)
 	if _, err := tx.Exec(query); err != nil {
 		return nil, err
 	}
