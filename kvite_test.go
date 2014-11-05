@@ -112,6 +112,30 @@ func TestGet(t *testing.T) {
 	})
 }
 
+func TestGetAll(t *testing.T) {
+	withDB(t, func(db *DB, t *testing.T) {
+		tx, err := db.Begin()
+		ok(t, err)
+		defer tx.Rollback()
+		b, err := tx.CreateBucket("test")
+		ok(t, err)
+
+		err = b.Put("foo1", []byte("bar1"))
+		err = b.Put("foo2", []byte("bar2"))
+		ok(t, err)
+
+		vals, err := b.GetAll()
+		ok(t, err)
+
+		equals(t, len(vals), 2)
+		equals(t, string(vals["foo1"]), "bar1")
+		equals(t, string(vals["foo2"]), "bar2")
+
+		err = tx.Commit()
+		ok(t, err)
+	})
+}
+
 func TestDelete(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
