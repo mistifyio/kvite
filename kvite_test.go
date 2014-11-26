@@ -175,7 +175,7 @@ func TestForEach(t *testing.T) {
 			err = b.Put("baz", []byte("stuff"))
 			ok(t, err)
 
-			items := make([]string, 0)
+			var items []string
 			err = b.ForEach(func(k string, v []byte) error {
 				items = append(items, k)
 				return nil
