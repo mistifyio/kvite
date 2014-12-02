@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	_ "github.com/mattn/go-sqlite3" //import sqlite3 for driver
 )
 
@@ -47,7 +48,10 @@ func Open(filename, table string) (*DB, error) {
 	}
 
 	tx, err := db.Begin()
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
 	query := fmt.Sprintf("create TABLE IF NOT EXISTS '%s' (key text not null, bucket text not null, value blob not null)", table)
 	if _, err := tx.Exec(query); err != nil {
 		return nil, err
@@ -127,7 +131,7 @@ func (db *DB) Transaction(fn func(*Tx) error) error {
 	// Make sure the transaction rolls back in the event of a panic.
 	defer func() {
 		if tx.db != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 	}()
 
