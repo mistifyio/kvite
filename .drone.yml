@@ -12,3 +12,5 @@ notify:
     on_started: true
     on_success: true
     on_failure: true
+cache:
+  - /usr/local/go/pkg
