@@ -2,3 +2,11 @@ image: golang:1.4
 script:
   - go get
   - go test -v
+notify:
+  slack:
+    webhook_url: $$slack_url
+    channel: '#test'
+    username: drone
+    on_started: true
+    on_success: true
+    on_failure: true
