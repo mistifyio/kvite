@@ -7,7 +7,7 @@ script:
 notify:
   slack:
     webhook_url: $$slack_url
-    channel: '#test'
+    channel: '#mistify-builds'
     username: drone
     on_started: true
     on_success: true
