@@ -15,7 +15,9 @@ The API was influenced heavily by
 multiple processes.
 
 Data is stored in a single table per kvite "instance" using a
-bucket/key/value.  Keys are stored as `TEXT` in the database and referenced as `string` in Go.  Values are stores as `BLOB` in the database and referenced as `[]byte` in Go.
+bucket/key/value.  Keys are stored as `TEXT` in the database and
+referenced as `string` in Go.
+Values are stores as `BLOB` in the database and referenced as `[]byte` in Go.
 
 Interactions with the datastore are done through transactions.
 
