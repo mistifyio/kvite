@@ -1,5 +1,7 @@
 image: golang:1.4
 script:
+  - go get github.com/golang/lint/golint
+  - $GOPATH/bin/golint
   - go get
   - go test -v
 notify:
