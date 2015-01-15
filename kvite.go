@@ -17,6 +17,7 @@ type (
 		putQuery     string
 		deleteQuery  string
 		getQuery     string
+		getAllQuery  string
 		foreachQuery string
 		bucketsQuery string
 	}
@@ -69,6 +70,7 @@ func Open(filename, table string) (*DB, error) {
 		db:           db,
 		table:        table,
 		getQuery:     fmt.Sprintf("SELECT value FROM '%s' WHERE key = ? and bucket = ?", table),
+		getAllQuery:  fmt.Sprintf("SELECT key, value FROM '%s' WHERE bucket = ?", table),
 		deleteQuery:  fmt.Sprintf("DELETE FROM '%s' WHERE key = ? AND bucket = ?", table),
 		putQuery:     fmt.Sprintf("INSERT OR REPLACE INTO '%s' (key, value, bucket) VALUES (?, ?, ?)", table),
 		foreachQuery: fmt.Sprintf("SELECT key, value FROM '%s' WHERE bucket = ?", table),
@@ -216,6 +218,32 @@ func (b *Bucket) Get(key string) ([]byte, error) {
 	}
 
 	return value, nil
+}
+
+// GetAll returns all the keys/values in the bucket as a map
+func (b *Bucket) GetAll() (map[string][]byte, error) {
+	var key string
+	var value []byte
+	values := make(map[string][]byte)
+
+	rows, err := b.tx.tx.Query(b.tx.db.getAllQuery, b.name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		if err = rows.Scan(&key, &value); err != nil {
+			return nil, err
+		}
+
+		values[key] = value
+	}
+
+	return values, nil
 }
 
 //ForEach executes a function for each key/value pair in a bucket. If the provided function returns an error then the iteration is stopped and the error is returned to the caller.
