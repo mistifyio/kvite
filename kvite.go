@@ -48,6 +48,10 @@ func Open(filename, table string) (*DB, error) {
 	}
 
 	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
 	defer func() {
 		_ = tx.Rollback()
 	}()
