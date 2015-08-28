@@ -14,8 +14,8 @@ func withDB(t *testing.T, fn func(db *DB, t *testing.T)) {
 	file := tempfile()
 	db, err := Open(file, "testing")
 	ok(t, err)
-	defer os.Remove(file)
-	defer db.Close()
+	defer removeFileAndLogError(file)
+	defer logErr(db.Close, "database close")
 	fn(db, t)
 }
 
@@ -30,7 +30,7 @@ func TestBegin(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 	})
 }
 
@@ -56,7 +56,7 @@ func TestCreateBucket(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
 		ok(t, err)
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 		_, err = tx.CreateBucket("test")
 		ok(t, err)
 		err = tx.Commit()
@@ -68,7 +68,7 @@ func TestCreateBucketIfNotExists(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
 		ok(t, err)
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 		_, err = tx.CreateBucketIfNotExists("test")
 		ok(t, err)
 		err = tx.Commit()
@@ -80,7 +80,7 @@ func TestPut(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
 		ok(t, err)
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 		b, err := tx.CreateBucket("test")
 		ok(t, err)
 
@@ -95,7 +95,7 @@ func TestGet(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
 		ok(t, err)
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 		b, err := tx.CreateBucket("test")
 		ok(t, err)
 
@@ -116,7 +116,7 @@ func TestDelete(t *testing.T) {
 	withDB(t, func(db *DB, t *testing.T) {
 		tx, err := db.Begin()
 		ok(t, err)
-		defer tx.Rollback()
+		defer logErr(tx.Rollback, "Transaction Rollback")
 		b, err := tx.CreateBucket("test")
 		ok(t, err)
 
@@ -240,8 +240,8 @@ func BenchmarkPutGet(bm *testing.B) {
 	if err != nil {
 		bm.Fatal(err)
 	}
-	defer os.Remove(file)
-	defer db.Close()
+	defer removeFileAndLogError(file)
+	defer logErr(db.Close, "database close")
 
 	err = db.Transaction(func(tx *Tx) error {
 		b, err := tx.CreateBucket("test")
@@ -269,8 +269,8 @@ func BenchmarkPutGet(bm *testing.B) {
 // tempfile returns a temporary file path.
 func tempfile() string {
 	f, _ := ioutil.TempFile("", "kvite-")
-	f.Close()
-	os.Remove(f.Name())
+	logErr(f.Close, "temp file close")
+	removeFileAndLogError(f.Name())
 	return f.Name()
 }
 
@@ -300,5 +300,19 @@ func equals(tb testing.TB, exp, act interface{}) {
 		_, file, line, _ := runtime.Caller(1)
 		fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033[39m\n\n", filepath.Base(file), line, exp, act)
 		tb.FailNow()
+	}
+}
+
+func logErr(fn func() error, message string) {
+	if err := fn(); err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("%s:%d: Error: %s: %s", filepath.Base(file), line, message, err.Error())
+	}
+}
+
+func removeFileAndLogError(file string) {
+	if err := os.Remove(file); err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("%s:%d: Error removing file '%s': %s", filepath.Base(file), line, file, err.Error())
 	}
 }
