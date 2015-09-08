@@ -312,7 +312,7 @@ func logErr(fn func() error, message string) {
 
 func removeFileAndLogError(file string) {
 	if err := os.Remove(file); err != nil {
-		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("%s:%d: Error removing file '%s': %s", filepath.Base(file), line, file, err.Error())
+		_, callerFile, line, _ := runtime.Caller(1)
+		fmt.Printf("%s:%d: Error removing file '%s': %s", filepath.Base(callerFile), line, file, err.Error())
 	}
 }
