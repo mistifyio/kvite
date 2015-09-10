@@ -173,7 +173,7 @@ func (s *KViteTestSuite) TestBucketDelete() {
 	tx, _ = s.DB.Begin()
 	b, _ = tx.CreateBucket(bucketName)
 	_ = b.Put(key, value)
-	tx.Commit()
+	_ = tx.Commit()
 
 	tx, _ = s.DB.Begin()
 	b, _ = tx.CreateBucket(bucketName)
