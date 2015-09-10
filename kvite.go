@@ -155,13 +155,8 @@ func (tx *Tx) Commit() error {
 	if tx.managed {
 		return errors.New("managed tx commit not allowed")
 	}
-	if tx.db == nil {
-		// should we return an error here?
-		return nil
-	}
 
 	err := tx.tx.Commit()
-	tx.db = nil
 	return err
 }
 
